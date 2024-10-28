@@ -1,68 +1,49 @@
-import React, { useState, useContext, useEffect, useCallback } from 'react';
-const URL = "https://www.googleapis.com/books/v1/volumes?q=";
-const AppContext = React.createContext();
+import React, { createContext, useState, useEffect, useContext } from 'react';
 
-const AppProvider = ({ children }) => {
-    const [searchTerm, setSearchTerm] = useState("the lost world");
-    const [books, setBooks] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [resultTitle, setResultTitle] = useState("");
+const AppContext = createContext();
 
-    const fetchBooks = useCallback(async () => {
-        setLoading(true);
-        try {
-            const response = await fetch(`${URL}${searchTerm}`);
-            const data = await response.json();
-            const { items } = data;
+const GUTENBERG_API_URL = "https://gutendex.com/books?search=";
 
-            if (items) {
-                const newBooks = items.slice(0, 20).map((bookSingle) => {
-                    const { id, volumeInfo } = bookSingle;
-                    const { authors, imageLinks, title, publishedDate, description } = volumeInfo;
+export const AppProvider = ({ children }) => {
+  const [books, setBooks] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("adventure");
+  const [resultTitle, setResultTitle] = useState("Popular Books");
+  const [loading, setLoading] = useState(false);
 
-                    return {
-                        id: id,
-                        author: authors ? authors.join(', ') : "Unknown Author",
-                        cover_img: imageLinks ? imageLinks.thumbnail : null,
-                        title: title,
-                        publishedDate: publishedDate || "Unknown Date",
-                        description: description || "No description available",
-                    };
-                });
+  useEffect(() => {
+    const fetchBooks = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`${GUTENBERG_API_URL}${searchTerm}`);
+        const data = await response.json();
 
-                setBooks(newBooks);
-
-                if (newBooks.length > 0) {
-                    setResultTitle("Your Search Result");
-                } else {
-                    setResultTitle("No Search Result Found!");
-                }
-            } else {
-                setBooks([]);
-                setResultTitle("No Search Result Found!");
-            }
-            setLoading(false);
-        } catch (error) {
-            console.log(error);
-            setLoading(false);
+        if (data && data.results) {
+          const formattedBooks = data.results.map(book => ({
+            id: book.id,
+            title: book.title,
+            author: book.authors.length > 0 ? book.authors.map(author => author.name).join(", ") : "Unknown Author",
+            cover_img: book.formats["image/jpeg"] || null,
+            download_url: book.formats["text/html"] || book.formats["application/pdf"],
+            first_publish_year: book.created ? book.created.split("-")[0] : "Unknown",
+          }));
+          setBooks(formattedBooks);
+        } else {
+          setBooks([]);
         }
-    }, [searchTerm]);
+      } catch (error) {
+        console.error("Error fetching from Gutenberg API:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBooks();
+  }, [searchTerm]);
 
-    useEffect(() => {
-        fetchBooks();
-    }, [searchTerm, fetchBooks]);
+  return (
+    <AppContext.Provider value={{ books, loading, resultTitle, setSearchTerm, setResultTitle }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
 
-    return (
-        <AppContext.Provider value={{
-            loading, books, setSearchTerm, resultTitle, setResultTitle,
-        }}>
-            {children}
-        </AppContext.Provider>
-    )
-}
-
-export const useGlobalContext = () => {
-    return useContext(AppContext);
-}
-
-export { AppContext, AppProvider };
+export const useGlobalContext = () => useContext(AppContext);
