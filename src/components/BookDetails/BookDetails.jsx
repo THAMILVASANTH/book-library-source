@@ -77,7 +77,18 @@ const BookDetails = () => {
             {book?.view_url && (
               <div className='book-details-actions'>
                 <a href={book.view_url} target="_blank" rel="noopener noreferrer" className='btn btn-view'>
-                  View Book
+                <button
+                    style={{
+                      backgroundColor: 'blue',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    View Book
+                  </button>
                 </a>
               </div>
             )}
